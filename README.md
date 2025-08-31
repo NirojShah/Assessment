@@ -1,12 +1,41 @@
-# React + Vite
+# MapUP Electric Vehicle Dashboard
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+The **Electric Vehicle Dashboard** is a React-based application that provides insights into EV data through **charts, tables, sorting, filtering, and search functionality**.  
+It is built with **React, Ant Design (UI), Chart.js (charts), and PapaParse (CSV parsing)**.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 📊 What It Shows
 
-## Expanding the ESLint configuration
+1. **Header Section**
+   - Displays the title: *Electric Vehicle Dashboard*.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+2. **Charts Section**
+   - **Bar Chart** → Distribution of EVs by County.  
+   - **Pie Chart** → Distribution of EVs by Electric Vehicle Type.  
+   - **Line Chart** → Growth trend of EVs over registration years.
+
+3. **Table Section**
+   - Displays the raw EV dataset in a table.  
+   - Includes **sorting, filtering, and pagination**.
+   - Columns like VIN, County, Model Year, Make, Model, Electric Vehicle Type, etc.
+
+4. **Data Management**
+   - CSV file is parsed dynamically using **PapaParse**.  
+   - Charts and tables update automatically when new data is loaded.  
+   - No hardcoded values — everything comes from the dataset.
+
+---
+
+## ⚙️ Features
+
+- ✅ **CSV Import** (using PapaParse)  
+- ✅ **Dynamic Charts** (Bar, Pie, Line via Chart.js)  
+- ✅ **Sortable & Filterable Table** (Ant Design Table)  
+- ✅ **Pagination & Scrolling Support**  
+- ✅ **Componentized Design** (split into Header, ChartSection, TableSection)  
+
+---
+
+## 🗂️ Project Structure
+
