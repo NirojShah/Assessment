@@ -1,6 +1,17 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import Papa from "papaparse";
-import { Card, Col, Row, Table, Spin, Alert, Input } from "antd";
+import {
+  Card,
+  Col,
+  Row,
+  Table,
+  Spin,
+  Alert,
+  Input,
+  Upload,
+  Button,
+} from "antd";
+import { UploadOutlined } from "@ant-design/icons";
 import { Bar, Pie, Line } from "react-chartjs-2";
 import { Chart as ChartJS } from "chart.js/auto";
 import "antd/dist/reset.css";
@@ -29,15 +40,16 @@ const FIELD_NAMES = {
 
 export default function Dashboard() {
   const [data, setData] = useState([]);
-  const [filteredData, setFilteredData] = useState([]); // for search
-  const [loading, setLoading] = useState(true);
+  const [filteredData, setFilteredData] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Load CSV with PapaParse
-  useEffect(() => {
-    Papa.parse("/src/assets/electricVehiclePopulation.csv", {
+  // Handle CSV Upload
+  const handleUpload = (file) => {
+    setLoading(true);
+    Papa.parse(file, {
       header: true,
-      download: true,
+      skipEmptyLines: true,
       transformHeader: (header) => header.trim().replace(/\s+/g, " "),
       complete: (result) => {
         const filtered = result.data.filter((d) => d && d[FIELD_NAMES.MAKE]);
@@ -46,24 +58,15 @@ export default function Dashboard() {
         setLoading(false);
       },
       error: (err) => {
-        console.error("PapaParse error:", err);
-        setError(
-          "Failed to load CSV file. Please check the file path or format."
-        );
+        console.error("PapaParse upload error:", err);
+        setError("Failed to parse uploaded CSV file.");
         setLoading(false);
       },
     });
-  }, []);
-
-  // Helper: unique filter options for a given field
-  const getUniqueFilters = (field) => {
-    const uniqueValues = [
-      ...new Set(filteredData.map((row) => row[field]).filter(Boolean)),
-    ];
-    return uniqueValues.map((val) => ({ text: val, value: val }));
+    return false; // prevent AntD from auto-uploading
   };
 
-  // Handle global search
+  // Search
   const handleSearch = (value) => {
     if (!value) {
       setFilteredData(data);
@@ -78,7 +81,15 @@ export default function Dashboard() {
     setFilteredData(filtered);
   };
 
-  // Process data for charts
+  // Unique filter options for columns
+  const getUniqueFilters = (field) => {
+    const uniqueValues = [
+      ...new Set(filteredData.map((row) => row[field]).filter(Boolean)),
+    ];
+    return uniqueValues.map((val) => ({ text: val, value: val }));
+  };
+
+  // Process Data for Charts
   const processedData = useMemo(() => {
     const makeCounts = {};
     const evTypeCounts = {};
@@ -107,7 +118,7 @@ export default function Dashboard() {
     return { makeCounts, evTypeCounts, countyCounts, rangeByYear };
   }, [filteredData]);
 
-  // Generate dynamic colors
+  // Generate chart colors
   const generateColors = (count) => {
     const colors = [
       "#36a2eb",
@@ -122,80 +133,53 @@ export default function Dashboard() {
     return Array.from({ length: count }, (_, i) => colors[i % colors.length]);
   };
 
-  // Chart options
+  // Chart Options
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
-    plugins: {
-      legend: { position: "top" },
-      tooltip: { enabled: true },
-    },
-    scales: {
-      y: { beginAtZero: true },
-      x: { ticks: { autoSkip: false, maxRotation: 45, minRotation: 45 } },
-    },
+    plugins: { legend: { position: "top" }, tooltip: { enabled: true } },
+    scales: { y: { beginAtZero: true } },
   };
 
-  // Chart datasets
-  const makeDistribution = useMemo(
-    () => ({
-      labels: Object.keys(processedData.makeCounts).length
-        ? Object.keys(processedData.makeCounts)
-        : ["No Data"],
-      datasets: [
-        {
-          label: "Number of Vehicles",
-          data: Object.keys(processedData.makeCounts).length
-            ? Object.values(processedData.makeCounts)
-            : [0],
-          backgroundColor: generateColors(
-            Object.keys(processedData.makeCounts).length || 1
-          ),
-        },
-      ],
-    }),
-    [processedData.makeCounts]
-  );
+  // Chart Data
+  const makeDistribution = {
+    labels: Object.keys(processedData.makeCounts),
+    datasets: [
+      {
+        label: "Number of Vehicles",
+        data: Object.values(processedData.makeCounts),
+        backgroundColor: generateColors(
+          Object.keys(processedData.makeCounts).length
+        ),
+      },
+    ],
+  };
 
-  const evTypeDistribution = useMemo(
-    () => ({
-      labels: Object.keys(processedData.evTypeCounts).length
-        ? Object.keys(processedData.evTypeCounts)
-        : ["No Data"],
-      datasets: [
-        {
-          label: "EV Types",
-          data: Object.keys(processedData.evTypeCounts).length
-            ? Object.values(processedData.evTypeCounts)
-            : [0],
-          backgroundColor: generateColors(
-            Object.keys(processedData.evTypeCounts).length || 1
-          ),
-        },
-      ],
-    }),
-    [processedData.evTypeCounts]
-  );
+  const evTypeDistribution = {
+    labels: Object.keys(processedData.evTypeCounts),
+    datasets: [
+      {
+        label: "EV Types",
+        data: Object.values(processedData.evTypeCounts),
+        backgroundColor: generateColors(
+          Object.keys(processedData.evTypeCounts).length
+        ),
+      },
+    ],
+  };
 
-  const countyDistribution = useMemo(
-    () => ({
-      labels: Object.keys(processedData.countyCounts).length
-        ? Object.keys(processedData.countyCounts)
-        : ["No Data"],
-      datasets: [
-        {
-          label: "Number of Vehicles",
-          data: Object.keys(processedData.countyCounts).length
-            ? Object.values(processedData.countyCounts)
-            : [0],
-          backgroundColor: generateColors(
-            Object.keys(processedData.countyCounts).length || 1
-          ),
-        },
-      ],
-    }),
-    [processedData.countyCounts]
-  );
+  const countyDistribution = {
+    labels: Object.keys(processedData.countyCounts),
+    datasets: [
+      {
+        label: "Number of Vehicles",
+        data: Object.values(processedData.countyCounts),
+        backgroundColor: generateColors(
+          Object.keys(processedData.countyCounts).length
+        ),
+      },
+    ],
+  };
 
   const years = Object.keys(processedData.rangeByYear).sort(
     (a, b) => Number(a) - Number(b)
@@ -204,94 +188,57 @@ export default function Dashboard() {
     (y) =>
       processedData.rangeByYear[y].total / processedData.rangeByYear[y].count
   );
-  const rangeTrend = useMemo(
-    () => ({
-      labels: years.length ? years : ["No Data"],
-      datasets: [
-        {
-          label: "Average Electric Range (miles)",
-          data: years.length ? avgRange : [0],
-          borderColor: "#42a5f5",
-          backgroundColor: "#42a5f5",
-          fill: false,
-        },
-      ],
-    }),
-    [years, avgRange]
-  );
+
+  const rangeTrend = {
+    labels: years,
+    datasets: [
+      {
+        label: "Average Electric Range (miles)",
+        data: avgRange,
+        borderColor: "#42a5f5",
+        backgroundColor: "#42a5f5",
+        fill: false,
+      },
+    ],
+  };
 
   // Dynamic Table Columns
   const columns = [
-    {
-      title: "VIN",
-      dataIndex: FIELD_NAMES.VIN,
-      key: "VIN",
-      width: 120,
-      sorter: (a, b) => a[FIELD_NAMES.VIN]?.localeCompare(b[FIELD_NAMES.VIN]),
-    },
+    { title: "VIN", dataIndex: FIELD_NAMES.VIN, key: "VIN", width: 120 },
     {
       title: "Make",
       dataIndex: FIELD_NAMES.MAKE,
       key: "Make",
       width: 100,
-      sorter: (a, b) => a[FIELD_NAMES.MAKE]?.localeCompare(b[FIELD_NAMES.MAKE]),
       filters: getUniqueFilters(FIELD_NAMES.MAKE),
       onFilter: (value, record) => record[FIELD_NAMES.MAKE] === value,
     },
-    {
-      title: "Model",
-      dataIndex: FIELD_NAMES.MODEL,
-      key: "Model",
-      width: 100,
-      sorter: (a, b) =>
-        a[FIELD_NAMES.MODEL]?.localeCompare(b[FIELD_NAMES.MODEL]),
-      filters: getUniqueFilters(FIELD_NAMES.MODEL),
-      onFilter: (value, record) => record[FIELD_NAMES.MODEL] === value,
-    },
+    { title: "Model", dataIndex: FIELD_NAMES.MODEL, key: "Model", width: 100 },
     {
       title: "Year",
       dataIndex: FIELD_NAMES.MODEL_YEAR,
       key: "Year",
       width: 80,
-      sorter: (a, b) =>
-        (parseInt(a[FIELD_NAMES.MODEL_YEAR]) || 0) -
-        (parseInt(b[FIELD_NAMES.MODEL_YEAR]) || 0),
-      filters: getUniqueFilters(FIELD_NAMES.MODEL_YEAR),
-      onFilter: (value, record) => record[FIELD_NAMES.MODEL_YEAR] === value,
     },
     {
       title: "Range",
       dataIndex: FIELD_NAMES.ELECTRIC_RANGE,
       key: "Range",
       width: 80,
-      sorter: (a, b) =>
-        (parseInt(a[FIELD_NAMES.ELECTRIC_RANGE]) || 0) -
-        (parseInt(b[FIELD_NAMES.ELECTRIC_RANGE]) || 0),
     },
     {
       title: "EV Type",
       dataIndex: FIELD_NAMES.EV_TYPE,
       key: "EV Type",
       width: 150,
-      filters: getUniqueFilters(FIELD_NAMES.EV_TYPE),
-      onFilter: (value, record) => record[FIELD_NAMES.EV_TYPE] === value,
     },
     {
       title: "County",
       dataIndex: FIELD_NAMES.COUNTY,
       key: "County",
       width: 100,
-      filters: getUniqueFilters(FIELD_NAMES.COUNTY),
-      onFilter: (value, record) => record[FIELD_NAMES.COUNTY] === value,
     },
-    {
-      title: "City",
-      dataIndex: FIELD_NAMES.CITY,
-      key: "City",
-      width: 100,
-      filters: getUniqueFilters(FIELD_NAMES.CITY),
-      onFilter: (value, record) => record[FIELD_NAMES.CITY] === value,
-    },
+    { title: "City", dataIndex: FIELD_NAMES.CITY, key: "City", width: 100 },
     { title: "State", dataIndex: FIELD_NAMES.STATE, key: "State", width: 80 },
   ];
 
@@ -300,7 +247,7 @@ export default function Dashboard() {
     return (
       <div style={{ textAlign: "center", marginTop: 50 }}>
         <Spin size="large" />
-        <p>Loading dataset...</p>
+        <p>Parsing dataset...</p>
       </div>
     );
   }
@@ -315,13 +262,21 @@ export default function Dashboard() {
 
   if (!data.length) {
     return (
-      <div style={{ padding: 20 }}>
-        <Alert
-          message="No Data"
-          description="No valid data found in the CSV file. Please check the file format and content."
-          type="warning"
-          showIcon
-        />
+      <div
+        style={{
+          width: "100vw",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
+        <Upload
+          beforeUpload={handleUpload}
+          showUploadList={false}
+          accept=".csv"
+        >
+          <Button icon={<UploadOutlined />}>Upload CSV</Button>
+        </Upload>
       </div>
     );
   }
@@ -347,15 +302,23 @@ export default function Dashboard() {
           />
         </Col>
 
+        <Col xs={24}>
+          <Upload
+            beforeUpload={handleUpload}
+            showUploadList={false}
+            accept=".csv"
+          >
+            <Button icon={<UploadOutlined />}>Upload Another CSV</Button>
+          </Upload>
+        </Col>
+
         <Col xs={24} md={12}>
           <Card
             title="Vehicles by Make"
             bordered={false}
             bodyStyle={{ height: 350 }}
           >
-            <div style={{ height: "100%" }}>
-              <Bar data={makeDistribution} options={chartOptions} />
-            </div>
+            <Bar data={makeDistribution} options={chartOptions} />
           </Card>
         </Col>
 
@@ -365,16 +328,7 @@ export default function Dashboard() {
             bordered={false}
             bodyStyle={{ height: 350 }}
           >
-            <div
-              style={{
-                height: "100%",
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              <Pie data={evTypeDistribution} options={chartOptions} />
-            </div>
+            <Pie data={evTypeDistribution} options={chartOptions} />
           </Card>
         </Col>
 
@@ -384,9 +338,7 @@ export default function Dashboard() {
             bordered={false}
             bodyStyle={{ height: 350 }}
           >
-            <div style={{ height: "100%" }}>
-              <Bar data={countyDistribution} options={chartOptions} />
-            </div>
+            <Bar data={countyDistribution} options={chartOptions} />
           </Card>
         </Col>
 
@@ -396,9 +348,7 @@ export default function Dashboard() {
             bordered={false}
             bodyStyle={{ height: 350 }}
           >
-            <div style={{ height: "100%" }}>
-              <Line data={rangeTrend} options={chartOptions} />
-            </div>
+            <Line data={rangeTrend} options={chartOptions} />
           </Card>
         </Col>
 
